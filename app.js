@@ -89,7 +89,6 @@ app.get('/api/clients/:client/:product', function (req, res) {
         var prodInfo = data.Includes.Products[req.params.product];
         var reviewStats = prodInfo.FilteredReviewStatistics;
 
-
         var result = {
             date: date.format('YYYY-MM-DD'),
             id: req.params.product,
@@ -97,8 +96,18 @@ app.get('/api/clients/:client/:product', function (req, res) {
             reviews: {
                 count: reviewStats.TotalReviewCount,
                 rating: reviewStats.AverageOverallRating
-            }
+            },
+            secondaryRatings: []
         };
+
+        reviewStats.SecondaryRatingsAveragesOrder.forEach(function (name) {
+            var rating = reviewStats.SecondaryRatingsAverages[name];
+
+            result.secondaryRatings.push({
+                id: rating.Id,
+                rating: rating.AverageRating
+            });
+        });
 
         res.send(result);
     });

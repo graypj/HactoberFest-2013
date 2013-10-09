@@ -1,4 +1,5 @@
 var date = moment('2013-01-01');
+var today = moment();
 
 function loadData(element) {
     $.get('/api/clients/whirlpool/WTW4950XW-NAR?date=' + date.format('YYYY-MM-DD'), function (response) {
@@ -19,10 +20,13 @@ function loadData(element) {
 
         chart.dispatch.on('stateChange', function(e) { ('New State:', JSON.stringify(e)); });
 
-        //setTimeout(function () {
-            //date.add('days', 15);
-            //loadData(element);
-        //}, 1000);
+        date.add('weeks', 2);
+
+        if (date.isBefore(today)) {
+            setTimeout(function () {
+                loadData(element);
+            }, 1000);
+        }
     });
 }
 
@@ -31,7 +35,7 @@ var chart;
 nv.addGraph(function() {
   chart = nv.models.scatterChart()
                 .forceY([0, 5])
-                .forceX([0, 50000])
+                .forceX([0, 1000])
                 .showDistX(true)
                 .showDistY(true)
                 .useVoronoi(true)
