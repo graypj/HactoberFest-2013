@@ -2,6 +2,7 @@
 
 var express = require('express');
 var _ = require('underscore');
+var moment = require('moment');
 var socket = require('socket.io');
 var http = require('http');
 var packageInfo = require('./package.json');
@@ -21,6 +22,86 @@ app.use('/assets', express.static(__dirname + '/assets'));
 
 app.get('/', function (request, response) {
     response.render('index');
+});
+
+var clients = {
+    whirlpool: {
+        passkey: 'pgzm9csuh2t0v1w6xthgxwe22'
+    }
+};
+
+function getReviewData(client, product, date, result) {
+    var clientInfo = clients[client];
+
+    if (!clientInfo) {
+        result({code: 400, message: "Unknown client: " + client});
+        return;
+    }
+
+    var url = "http://" + client + ".ugc.bazaarvoice.com/data/reviews.json?" +
+                    "PassKey=" + clientInfo.passkey +
+                    "&ApiVersion=5.4" +
+                    "&filter=productid:" + product +
+                    "&filteredstats=reviews" +
+                    "&include=products" +
+                    "&filter=submissiontime:lt:" + moment(date).add('days', 1).unix();
+
+    console.log(url);
+
+    http.get(url, function (res) {
+        var body = '';
+
+        res.on('data', function(chunk) {
+            body += chunk;
+        });
+
+        res.on('end', function() {
+            result(null, JSON.parse(body));
+        });
+    }).on('error', function (err) {
+        result(err);
+    });
+}
+
+app.get('/api/clients/:client/:product', function (req, res) {
+    var date = moment(req.query.date);
+
+    if (!req.query.date || !date.isValid()) {
+        res.send(400);
+        return;
+    }
+
+    date = date.startOf('day');
+
+    getReviewData(req.params.client, req.params.product, date, function (err, data) {
+        if (err) {
+            if ('statusCode' in err) {
+                res.send(err.statusCode, 'Request error');
+            } else {
+                res.send(500, 'Request error');
+            }
+
+            return;
+        }
+
+        //console.log(data);
+
+        var prodInfo = data.Includes.Products[req.params.product];
+        var reviewStats = prodInfo.FilteredReviewStatistics;
+
+
+        var result = {
+            date: date.format('YYYY-MM-DD'),
+            id: req.params.product,
+            client: { id: req.params.client },
+            reviews: {
+                count: reviewStats.TotalReviewCount,
+                rating: reviewStats.AverageOverallRating
+            }
+        };
+
+        res.send(result);
+    });
 });
 
 server.listen(serverPort);
