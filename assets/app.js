@@ -194,6 +194,7 @@ nv.addGraph(function () {
     chart = nv.models.scatterChart()
         .forceY([0, 5])
         .forceX([0, 1000])
+        .sizeRange([2000, 3000])
         .showDistX(true)
         .showDistY(true)
         .useVoronoi(true)
