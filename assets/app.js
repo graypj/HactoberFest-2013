@@ -75,11 +75,13 @@ function addDataObj(prodData) {
 
     var syndicationElement = {
         x: prodData.client.id + " [" + prodData.id + ']',
-        y: prodData.reviews.syndicatedCount
+        y: prodData.reviews.syndicatedCount,
+        color: '#aec7e8'
     };
     var nativeElement = {
         x: prodData.client.id + " [" + prodData.id + ']',
-        y: prodData.reviews.count - prodData.reviews.syndicatedCount
+        y: prodData.reviews.count - prodData.reviews.syndicatedCount,
+        color: '#798ba2'
     };
 
     if (key in chartData.keyed) {
