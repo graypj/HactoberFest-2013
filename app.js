@@ -40,6 +40,14 @@ var clients = {
 
     homedepot: {
         passkey: 'm7lebkidnsp30y9y8n9l1ay4y'
+    },
+
+    bestbuy: {
+        passkey: 'bazm2nnzvt3t6q4i6pvq98xv3'
+    },
+
+    directbuy: {
+        passkey: 'b9nlbqyykw8ykatyy4pzp5zgv'
     }
 };
 
@@ -84,7 +92,11 @@ function cacheResult(key, callback, loader) {
                     return;
                 }
 
-                successCb(data);
+                try {
+                    successCb(data);
+                } catch (e) {
+                    loadDataCb();
+                }
             });
         } else {
             loadDataCb();
