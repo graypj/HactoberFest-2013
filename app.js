@@ -95,19 +95,19 @@ function cacheResult(key, callback, loader) {
 function getJson(url, callback) {
     console.log(url);
 
-    http.get(url, function (res) {
+    http.get(url,function (res) {
         var body = '';
 
-        res.on('data', function(chunk) {
+        res.on('data', function (chunk) {
             body += chunk;
         });
 
-        res.on('end', function() {
+        res.on('end', function () {
             callback(null, JSON.parse(body));
         });
     }).on('error', function (err) {
-        callback(err);
-    });
+            callback(err);
+        });
 }
 
 function getRelatedProducts(client, product, callback) {
@@ -159,28 +159,63 @@ function getReviewData(client, product, date, callback) {
     var cacheKey = path.join(client, product, date.format('YYYY-MM'), date.format('YYYY-MM-DD') + '-reviews.json');
     cacheResult(cacheKey, callback, function (callback) {
         var url = "http://" + client + ".ugc.bazaarvoice.com/data/reviews.json?" +
-                        "PassKey=" + clientInfo.passkey +
-                        "&ApiVersion=5.4" +
-                        "&filter=productid:" + product +
-                        "&filteredstats=reviews" +
-                        "&include=products" +
-                        "&filter=submissiontime:lt:" + moment(date).add('days', 1).unix();
+            "PassKey=" + clientInfo.passkey +
+            "&ApiVersion=5.4" +
+            "&filter=productid:" + product +
+            "&filteredstats=reviews" +
+            "&include=products" +
+            "&filter=submissiontime:lt:" + moment(date).add('days', 1).unix();
 
         console.log(url);
 
-        http.get(url, function (res) {
+        http.get(url,function (res) {
             var body = '';
 
-            res.on('data', function(chunk) {
+            res.on('data', function (chunk) {
                 body += chunk;
             });
 
-            res.on('end', function() {
+            res.on('end', function () {
                 callback(null, body);
             });
         }).on('error', function (err) {
-            callback(err);
-        });
+                callback(err);
+            });
+    });
+}
+
+function getSyndicatedReviewData(client, product, date, callback) {
+    var clientInfo = clients[client];
+
+    if (!clientInfo) {
+        callback({statusCode: 404, message: "Unknown client: " + client});
+        return;
+    }
+
+    var cacheKey = path.join(client, product, date.format('YYYY-MM'), date.format('YYYY-MM-DD') + '-syndicated-reviews.json');
+    cacheResult(cacheKey, callback, function (callback) {
+        var url = "http://" + client + ".ugc.bazaarvoice.com/data/reviews.json?" +
+            "PassKey=" + clientInfo.passkey +
+            "&ApiVersion=5.4" +
+            "&filter=productid:" + product +
+            "&filter=submissiontime:lt:" + moment(date).add('days', 1).unix() +
+            "&filter=isSyndicated:true";
+
+        console.log(url);
+
+        http.get(url,function (res) {
+            var body = '';
+
+            res.on('data', function (chunk) {
+                body += chunk;
+            });
+
+            res.on('end', function () {
+                callback(null, body);
+            });
+        }).on('error', function (err) {
+                callback(err);
+            });
     });
 }
 
@@ -205,38 +240,51 @@ app.get('/api/clients/:client/:product', function (req, res) {
             return;
         }
 
-        getRelatedProducts(req.params.client, req.params.product, function (err, related) {
+        getSyndicatedReviewData(req.params.client, req.params.product, date, function (err, syndicatedData) {
             if (err) {
-                console.log(err);
-                res.send(500, 'Internal error');
+                if ('statusCode' in err) {
+                    res.send(err.statusCode, 'Request error');
+                } else {
+                    res.send(500, 'Request error');
+                }
+
                 return;
             }
 
-            var prodInfo = data.Includes.Products[req.params.product];
-            var reviewStats = prodInfo.FilteredReviewStatistics;
+            getRelatedProducts(req.params.client, req.params.product, function (err, related) {
+                if (err) {
+                    console.log(err);
+                    res.send(500, 'Internal error');
+                    return;
+                }
 
-            var result = {
-                date: date.format('YYYY-MM-DD'),
-                id: req.params.product,
-                client: { id: req.params.client },
-                reviews: {
-                    count: reviewStats.TotalReviewCount,
-                    rating: reviewStats.AverageOverallRating,
-                    secondaryRatings: []
-                },
-                related: related
-            };
+                var prodInfo = data.Includes.Products[req.params.product];
+                var reviewStats = prodInfo.FilteredReviewStatistics;
 
-            reviewStats.SecondaryRatingsAveragesOrder.forEach(function (name) {
-                var rating = reviewStats.SecondaryRatingsAverages[name];
+                var result = {
+                    date: date.format('YYYY-MM-DD'),
+                    id: req.params.product,
+                    client: { id: req.params.client },
+                    reviews: {
+                        count: reviewStats.TotalReviewCount,
+                        syndicatedCount: syndicatedData.TotalResults,
+                        rating: reviewStats.AverageOverallRating,
+                        secondaryRatings: []
+                    },
+                    related: related
+                };
 
-                result.reviews.secondaryRatings.push({
-                    id: rating.Id,
-                    rating: rating.AverageRating
+                reviewStats.SecondaryRatingsAveragesOrder.forEach(function (name) {
+                    var rating = reviewStats.SecondaryRatingsAverages[name];
+
+                    result.reviews.secondaryRatings.push({
+                        id: rating.Id,
+                        rating: rating.AverageRating
+                    });
                 });
-            });
 
-            res.send(result);
+                res.send(result);
+            });
         });
 
     });
