@@ -47,7 +47,7 @@ function cacheResult(key, callback, loader) {
     var cacheFile = path.join(cacheDir, key);
 
     var successCb = function (data) {
-        var jsonData = JSON.parse(data);
+        var jsonData = _.isString(data) ? JSON.parse(data) : data;
         callback(null, jsonData);
     };
 
@@ -65,7 +65,7 @@ function cacheResult(key, callback, loader) {
                     return;
                 }
 
-                fs.writeFile(cacheFile, data, { encoding: 'utf-8' }, function (err) {
+                fs.writeFile(cacheFile, _.isString(data) ? data : JSON.stringify(data), { encoding: 'utf-8' }, function (err) {
                     if (err) {
                         console.log(err);
                     }
@@ -92,27 +92,59 @@ function cacheResult(key, callback, loader) {
     });
 }
 
+function getJson(url, callback) {
+    console.log(url);
+
+    http.get(url, function (res) {
+        var body = '';
+
+        res.on('data', function(chunk) {
+            body += chunk;
+        });
+
+        res.on('end', function() {
+            callback(null, JSON.parse(body));
+        });
+    }).on('error', function (err) {
+        callback(err);
+    });
+}
+
 function getRelatedProducts(client, product, callback) {
     var cacheKey = path.join(client, product, 'related.json');
+    var relatedProds = [];
+    var expectedCount = 0;
+    var cacheCallback = null;
+
+    var addRelatedProds = function (err, result) {
+        if (result.products && result.products.length > 0) {
+            result.products.forEach(function (relatedProd) {
+                if (relatedProd.client !== client && relatedProd.externalId !== product && !_.find(relatedProds, function (a) { return a.client === relatedProd.client && a.externalId === relatedProd.externalId; })) {
+                    console.log(client + ":" + product, relatedProd);
+                    relatedProds.push(relatedProd);
+                    loadRelatedProducts(relatedProd.client, relatedProd.externalId);
+                }
+            });
+        }
+
+        expectedCount -= 1;
+        if (expectedCount === 0) {
+            cacheCallback(null, {products: relatedProds});
+        }
+    };
+
+    var loadRelatedProducts = function (clientName, productName) {
+        var baseUrl = 'http://oracle.bazaar.prod.us-east-1.nexus.bazaarvoice.com:7170/api/1/product/' + clientName + '/' + productName;
+
+        expectedCount += 3;
+        getJson(baseUrl + '/destinations', addRelatedProds);
+        getJson(baseUrl + '/sources', addRelatedProds);
+        getJson(baseUrl + '/related', addRelatedProds);
+    };
 
     cacheResult(cacheKey, callback, function (callback) {
-        var url = 'http://oracle.bazaar.prod.us-east-1.nexus.bazaarvoice.com:7170/api/1/product/' + client + '/' + product + '/destinations';
-
-        console.log(url);
-
-        http.get(url, function (res) {
-            var body = '';
-
-            res.on('data', function(chunk) {
-                body += chunk;
-            });
-
-            res.on('end', function() {
-                callback(null, body);
-            });
-        }).on('error', function (err) {
-            callback(err);
-        });
+        cacheCallback = callback;
+        loadRelatedProducts(client, product);
     });
 }
 

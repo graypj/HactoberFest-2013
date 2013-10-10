@@ -70,7 +70,7 @@ function loadData(element, client, product) {
             }
         }
 
-        if (response.related && response.related.products) {
+        if (response.related && response.related.products && response.related.products.length > 0) {
             var count = response.related.products.length;
 
             response.related.products.forEach(function (relatedProd) {
@@ -132,6 +132,13 @@ function loadData(element, client, product) {
     //});
 }
 
+function loadProduct() {
+    var clientName = $('#client-name-text').val();
+    var productName = $('#product-name-text').val();
+
+    loadData(d3.selectAll('#test1 svg').datum(chartData.list), clientName, productName);
+}
+
 
 var chart;
 nv.addGraph(function() {
@@ -154,7 +161,6 @@ nv.addGraph(function() {
     trackingKey = e.series.key;
     showDetail(e.point.secondaryRatings);
   });
-  loadData(d3.selectAll('#test1 svg').datum(chartData.list), 'whirlpool', 'WTW4950XW-NAR');
 
   return chart;
 });
