@@ -1,18 +1,40 @@
 var date = moment('2013-01-01');
 var today = moment();
-var trackingKey = "";
+var trackingKey;
 
 var chartData = {
     list: [],
     keyed: {}
 };
 
-function showDetail(secondaryRatings){
-  var tooltip = "<h3>"+ trackingKey +"</h3>";
-  secondaryRatings.forEach(function(info){
-  tooltip += info.id + ": " + info.rating + "<br>";
+function showDetail (data) {
+    var content = '<h1 class="ui dividing header">' + data.client.id + ' <span style="font-size: 0.7em; font-style:italic; font-weight:normal">' + data.id + '</span></h1>';
+
+    content += '<table class="ui sortable table segment">';
+    content += '<tbody>';
+    content += '<tr>';
+    content += '<td>Reviews</td>';
+    content += '<td>' + data.reviews.count + '</td>';
+    content += '</tr>';
+    content += '<tr>';
+    content += '<td>Rating</td>';
+    content += '<td>' + data.reviews.rating + '</td>';
+    content += '</tr>';
+    content += '</tbody></table>';
+
+    content += '<h3>Secondary Ratings</h3>';
+    content += '<table class="ui sortable table segment">';
+    content += '<thead><tr><th>Name</th><th>Rating</th></tr></thead>';
+    content += '<tbody>';
+    data.reviews.secondaryRatings.forEach(function (info) {
+        content += '<tr>';
+        content += '<td>' + info.id + '</td>';
+        content += '<td>' + info.rating + '</td>';
+        content += '</tr>';
     });
-    document.getElementById('detail').innerHTML = tooltip;
+    content += '</tbody></table>';
+
+    document.getElementById('detail').innerHTML = content;
 }
 
 function getProductData(client, product, callback) {
@@ -26,11 +48,16 @@ function addDataObj(prodData) {
     var value = {
         x: prodData.reviews.count,
         y: prodData.reviews.rating,
-        secondaryRatings: prodData.reviews.secondaryRatings
+        data: prodData
     };
 
     if (key in chartData.keyed) {
         chartData.keyed[key].values[0] = value;
+
+        if (key === trackingKey) {
+            showDetail(value.data);
+        }
+
         return;
     }
 
@@ -38,6 +65,10 @@ function addDataObj(prodData) {
         key: key,
         values: [value]
     };
+
+    if (key === trackingKey) {
+        showDetail(value.data);
+    }
 
     chartData.list.push(element);
     chartData.keyed[key] = element;
@@ -91,51 +122,13 @@ function loadData(element, client, product) {
         }
     });
 
-    //$.get('/api/clients/' + client + '/' + product + '?date=' + date.format('YYYY-MM-DD'), function (response) {
-        //var data = [];
-        //var trackingElement;
-        //var tmpElement = {
-            //key: response.client.id + " " + response.id,
-            //values: [{
-                //x: response.reviews.count,
-                //y: response.reviews.rating,
-                //secondaryRatings: response.reviews.secondaryRatings
-            //}]
-        //};
-        //if (tmpElement.key == trackingKey) {
-          //trackingElement = tmpElement;
-        //}
-        //data.push(tmpElement);
-
-        //element.datum(data)
-               //.call(chart);
-
-        //nv.utils.windowResize(chart.update);
-
-        //chart.dispatch.on('stateChange', function(e) { ('New State:', JSON.stringify(e)); });
-
-		//if (trackingElement !== undefined) {
-			//showDetail(trackingElement.values[0].secondaryRatings);
-		//}
-
-        //if (!date.isSame(today, 'day')) {
-            //date.add('weeks', 2);
-
-            //if (date.isAfter(today)) {
-                //date = today;
-            //}
-
-            //setTimeout(function () {
-                //loadData(element);
-            //}, 500);
-        //}
-    //});
 }
 
 function loadProduct() {
     var clientName = $('#client-name-text').val();
     var productName = $('#product-name-text').val();
 
+    trackingKey = clientName + ' [' + productName + ']';
     loadData(d3.selectAll('#test1 svg').datum(chartData.list), clientName, productName);
 }
 
@@ -154,12 +147,9 @@ nv.addGraph(function() {
 
   //chart.xAxis.tickFormat(d3.format('.02f'));
   chart.yAxis.tickFormat(d3.format('.02f'));
-  chart.tooltipContent(function(key, x, y, e) {
-      return '<h2>' + key + '</h2>';
-  });
-  chart.scatter.dispatch.on('elementClick', function(e){
+  chart.scatter.dispatch.on('elementClick', function(e) {
     trackingKey = e.series.key;
-    showDetail(e.point.secondaryRatings);
+    showDetail(e.point.data);
   });
 
   return chart;

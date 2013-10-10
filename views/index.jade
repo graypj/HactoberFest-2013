@@ -3,8 +3,10 @@ html
     head
         title TrendLines
         link(href="/assets/nv.d3.css", rel="stylesheet")
+        link(href="/assets/semantic.css", rel="stylesheet")
 
         script(src="/assets/jquery-1.10.2.min.js")
+        script(src="/assets/semantic.js")
         script(src="/assets/d3.v3.js")
         script(src="/assets/fisheye.js")
         script(src="/assets/nv.d3.js")
@@ -23,8 +25,9 @@ html
 
             button(onclick="loadProduct()") Load
 
+        .ui.grid
+            #test1.twelve.wide.column
+                svg(style="height:500px")
 
-        #test1
-            svg(style="height:500px")
-        #detail(style="width:300px;position: absolute;right:10px;top:30px;")
+            #detail.four.wide.column
 
