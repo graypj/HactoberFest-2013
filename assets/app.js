@@ -1,17 +1,32 @@
 var date = moment('2013-01-01');
 var today = moment();
+var trackingKey = "";
+
+
+function showDetail(secondaryRatings){
+  var tooltip = "<h3>"+ trackingKey +"</h3>";
+  secondaryRatings.forEach(function(info){
+  tooltip += info.id + ": " + info.rating + "<br>"
+    });
+    document.getElementById('detail').innerHTML = tooltip;
+}
 
 function loadData(element) {
     $.get('/api/clients/whirlpool/WTW4950XW-NAR?date=' + date.format('YYYY-MM-DD'), function (response) {
         var data = [];
-
-        data.push({
+        var trackingElement;
+		var tmpElement = {
             key: response.client.id + " " + response.id,
             values: [{
                 x: response.reviews.count,
-                y: response.reviews.rating
+                y: response.reviews.rating,
+                secondaryRatings: response.secondaryRatings
             }]
-        });
+        };
+        if (tmpElement.key == trackingKey) {
+        	trackingElement = tmpElement;
+        }
+        data.push(tmpElement);
 
         element.datum(data)
                .call(chart);
@@ -21,10 +36,12 @@ function loadData(element) {
         chart.dispatch.on('stateChange', function(e) { ('New State:', JSON.stringify(e)); });
 
         date.add('weeks', 2);
-
+		if (trackingElement != undefined) {
+			showDetail(trackingElement.values[0].secondaryRatings);
+		}
         if (date.isBefore(today)) {
-            setTimeout(function () {
-                loadData(element);
+            setTimeout(function () {                
+                loadData(element);                
             }, 1000);
         }
     });
@@ -45,11 +62,14 @@ nv.addGraph(function() {
 
   //chart.xAxis.tickFormat(d3.format('.02f'));
   chart.yAxis.tickFormat(d3.format('.02f'));
-  chart.tooltipContent(function(key) {
+  chart.tooltipContent(function(key, x, y, e) {
       return '<h2>' + key + '</h2>';
   });
-
-  loadData(d3.select('#test1 svg'));
+  chart.scatter.dispatch.on('elementClick', function(e){
+    trackingKey = e.series.key;
+    showDetail(e.point.secondaryRatings);
+  });
+  loadData(d3.selectAll('#test1 svg'));
 
   return chart;
 });
