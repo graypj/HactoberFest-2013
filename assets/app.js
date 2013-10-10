@@ -31,6 +31,14 @@ function showDetail(data) {
     content += '<td>' + data.reviews.count + '</td>';
     content += '</tr>';
     content += '<tr>';
+    content += '<td style="padding-left: 50px;">Syndicated</td>';
+    content += '<td>' + data.reviews.syndicatedCount + '</td>';
+    content += '</tr>';
+    content += '<tr>';
+    content += '<td style="padding-left: 50px;">Native</td>';
+    content += '<td>' + (data.reviews.count - data.reviews.syndicatedCount) + '</td>';
+    content += '</tr>';
+    content += '<tr>';
     content += '<td>Rating</td>';
     content += '<td>' + data.reviews.rating + '</td>';
     content += '</tr>';
