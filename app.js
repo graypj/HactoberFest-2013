@@ -36,6 +36,10 @@ var clients = {
 
     lowes: {
         passkey: 'hbukjmqhwuqztspp2kbwy7vfe'
+    },
+
+    homedepot: {
+        passkey: 'm7lebkidnsp30y9y8n9l1ay4y'
     }
 };
 
