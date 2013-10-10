@@ -1,4 +1,5 @@
 /assets/*
 /views/*
+/cache/*
 .gitignore
 /.git/*

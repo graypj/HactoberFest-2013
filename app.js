@@ -6,11 +6,16 @@ var moment = require('moment');
 var socket = require('socket.io');
 var http = require('http');
 var packageInfo = require('./package.json');
+var fs = require('fs');
+var path = require('path');
+var mkdirp = require('mkdirp');
 
 var app = express();
 var server = http.createServer(app);
 
 var serverPort = process.env.VMC_APP_PORT || 3000;
+
+var cacheDir = __dirname + '/cache';
 
 app.set('view engine', 'jade');
 app.set('views', __dirname + '/views');
@@ -27,39 +32,119 @@ app.get('/', function (request, response) {
 var clients = {
     whirlpool: {
         passkey: 'pgzm9csuh2t0v1w6xthgxwe22'
+    },
+
+    lowes: {
+        passkey: 'hbukjmqhwuqztspp2kbwy7vfe'
     }
 };
 
-function getReviewData(client, product, date, result) {
+function cacheResult(key, callback, loader) {
+    var cacheFile = path.join(cacheDir, key);
+
+    var successCb = function (data) {
+        var jsonData = JSON.parse(data);
+        callback(null, jsonData);
+    };
+
+    var loadDataCb = function () {
+        loader(function (err, data) {
+            if (err) {
+                callback(err);
+                return;
+            }
+
+            mkdirp(path.dirname(cacheFile), function (err) {
+                if (err) {
+                    console.log(err);
+                    successCb(data);
+                    return;
+                }
+
+                fs.writeFile(cacheFile, data, { encoding: 'utf-8' }, function (err) {
+                    if (err) {
+                        console.log(err);
+                    }
+
+                    successCb(data);
+                });
+            });
+        });
+    };
+
+    fs.exists(cacheFile, function (exists) {
+        if (exists) {
+            fs.readFile(cacheFile, { encoding: 'utf-8' }, function (err, data) {
+                if (err) {
+                    loadDataCb();
+                    return;
+                }
+
+                successCb(data);
+            });
+        } else {
+            loadDataCb();
+        }
+    });
+}
+
+function getRelatedProducts(client, product, callback) {
+    var cacheKey = path.join(client, product, 'related.json');
+
+    cacheResult(cacheKey, callback, function (callback) {
+        var url = 'http://oracle.bazaar.prod.us-east-1.nexus.bazaarvoice.com:7170/api/1/product/' + client + '/' + product + '/destinations';
+
+        console.log(url);
+
+        http.get(url, function (res) {
+            var body = '';
+
+            res.on('data', function(chunk) {
+                body += chunk;
+            });
+
+            res.on('end', function() {
+                callback(null, body);
+            });
+        }).on('error', function (err) {
+            callback(err);
+        });
+    });
+}
+
+function getReviewData(client, product, date, callback) {
     var clientInfo = clients[client];
 
     if (!clientInfo) {
-        result({code: 400, message: "Unknown client: " + client});
+        callback({statusCode: 404, message: "Unknown client: " + client});
         return;
     }
 
-    var url = "http://" + client + ".ugc.bazaarvoice.com/data/reviews.json?" +
-                    "PassKey=" + clientInfo.passkey +
-                    "&ApiVersion=5.4" +
-                    "&filter=productid:" + product +
-                    "&filteredstats=reviews" +
-                    "&include=products" +
-                    "&filter=submissiontime:lt:" + moment(date).add('days', 1).unix();
+    var cacheKey = path.join(client, product, date.format('YYYY-MM'), date.format('YYYY-MM-DD') + '-reviews.json');
+    cacheResult(cacheKey, callback, function (callback) {
+        var url = "http://" + client + ".ugc.bazaarvoice.com/data/reviews.json?" +
+                        "PassKey=" + clientInfo.passkey +
+                        "&ApiVersion=5.4" +
+                        "&filter=productid:" + product +
+                        "&filteredstats=reviews" +
+                        "&include=products" +
+                        "&filter=submissiontime:lt:" + moment(date).add('days', 1).unix();
 
-    console.log(url);
+        console.log(url);
 
-    http.get(url, function (res) {
-        var body = '';
+        http.get(url, function (res) {
+            var body = '';
 
-        res.on('data', function(chunk) {
-            body += chunk;
+            res.on('data', function(chunk) {
+                body += chunk;
+            });
+
+            res.on('end', function() {
+                callback(null, body);
+            });
+        }).on('error', function (err) {
+            callback(err);
         });
-
-        res.on('end', function() {
-            result(null, JSON.parse(body));
-        });
-    }).on('error', function (err) {
-        result(err);
     });
 }
 
@@ -84,32 +169,40 @@ app.get('/api/clients/:client/:product', function (req, res) {
             return;
         }
 
-        //console.log(data);
+        getRelatedProducts(req.params.client, req.params.product, function (err, related) {
+            if (err) {
+                console.log(err);
+                res.send(500, 'Internal error');
+                return;
+            }
 
-        var prodInfo = data.Includes.Products[req.params.product];
-        var reviewStats = prodInfo.FilteredReviewStatistics;
+            var prodInfo = data.Includes.Products[req.params.product];
+            var reviewStats = prodInfo.FilteredReviewStatistics;
 
-        var result = {
-            date: date.format('YYYY-MM-DD'),
-            id: req.params.product,
-            client: { id: req.params.client },
-            reviews: {
-                count: reviewStats.TotalReviewCount,
-                rating: reviewStats.AverageOverallRating
-            },
-            secondaryRatings: []
-        };
+            var result = {
+                date: date.format('YYYY-MM-DD'),
+                id: req.params.product,
+                client: { id: req.params.client },
+                reviews: {
+                    count: reviewStats.TotalReviewCount,
+                    rating: reviewStats.AverageOverallRating,
+                    secondaryRatings: []
+                },
+                related: related
+            };
 
-        reviewStats.SecondaryRatingsAveragesOrder.forEach(function (name) {
-            var rating = reviewStats.SecondaryRatingsAverages[name];
+            reviewStats.SecondaryRatingsAveragesOrder.forEach(function (name) {
+                var rating = reviewStats.SecondaryRatingsAverages[name];
 
-            result.secondaryRatings.push({
-                id: rating.Id,
-                rating: rating.AverageRating
+                result.reviews.secondaryRatings.push({
+                    id: rating.Id,
+                    rating: rating.AverageRating
+                });
             });
+
+            res.send(result);
         });
 
-        res.send(result);
     });
 });
 
