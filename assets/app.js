@@ -1,8 +1,17 @@
-var date = moment('2013-01-01');
+var date = moment('2012-01-01');
 var today = moment();
 var trackingKey;
+var runningAuto = false;
+
+var interval = {
+    type: 'weeks',
+    count: 2
+};
 
 var chartData = {
+    client: null,
+    product: null,
+    element: null,
     list: [],
     keyed: {}
 };
@@ -74,8 +83,11 @@ function addDataObj(prodData) {
     chartData.keyed[key] = element;
 }
 
-function loadData(element, client, product) {
-    getProductData(client, product, function (err, response) {
+
+function loadProductData() {
+    $('#current_date').text(date.format('YYYY-MM-DD'));
+
+    getProductData(chartData.client, chartData.product, function (err, response) {
         if (err) {
             console.log(err);
             return;
@@ -84,20 +96,13 @@ function loadData(element, client, product) {
         addDataObj(response);
 
         function loadVis() {
-            element.call(chart);
-
+            chartData.element.call(chart);
             nv.utils.windowResize(chart.update);
 
-            if (!date.isSame(today, 'day')) {
-                date.add('weeks', 2);
-
-                if (date.isAfter(today)) {
-                    date = today;
-                }
-
+            if (runningAuto) {
                 setTimeout(function () {
-                    loadData(element, client, product);
-                }, 500);
+                    $('#date_slider').labeledslider('value', $('#date_slider').labeledslider('value') + 1);
+                }, 100);
             }
         }
 
@@ -121,7 +126,19 @@ function loadData(element, client, product) {
             loadVis();
         }
     });
+}
 
+function startAuto() {
+    if (runningAuto) {
+        return;
+    }
+
+    runningAuto = true;
+    $('#date_slider').labeledslider('value', $('#date_slider').labeledslider('value') + 1);
+}
+
+function stopAuto() {
+    runningAuto = false;
 }
 
 function loadProduct() {
@@ -129,7 +146,11 @@ function loadProduct() {
     var productName = $('#product-name-text').val();
 
     trackingKey = clientName + ' [' + productName + ']';
-    loadData(d3.selectAll('#test1 svg').datum(chartData.list), clientName, productName);
+
+    chartData.element = d3.selectAll('#test1 svg').datum(chartData.list);
+    chartData.client = clientName;
+    chartData.product = productName;
+    loadProductData();
 }
 
 
@@ -179,3 +200,48 @@ function randomData(groups, points) { //# groups,# points per group
 
   return data;
 }
+
+$(function() {
+    var labels = [];
+    var dates = [];
+    var labelDate = moment(date);
+    var count = 0;
+
+    while (labelDate.isBefore(today)) {
+        count += 1;
+        labels.push(labelDate.format('YYYY-MM-DD'));
+        dates.push(moment(labelDate));
+        labelDate.add(interval.type, interval.count);
+    }
+
+    if (!labelDate.isSame(today)) {
+        count += 1;
+        dates.push(moment(today));
+        labels.push(today.format('YYYY-MM-DD'));
+    }
+
+    $('#date_slider').labeledslider({
+        min: 1,
+        max: count,
+        range: 'min',
+        step: 1,
+        tickInterval: 5,
+        tickLabels: labels,
+        slide: function (event, ui) {
+            if (!dates[ui.value - 1].isSame(date)) {
+                date = moment(dates[ui.value - 1]);
+                loadProductData();
+            } else {
+                runningAuto = false;
+            }
+        },
+        change: function (event, ui) {
+            if (!dates[ui.value - 1].isSame(date)) {
+                date = moment(dates[ui.value - 1]);
+                loadProductData();
+            } else {
+                runningAuto = false;
+            }
+        }
+    }).slider();
+});

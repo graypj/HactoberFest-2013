@@ -2,10 +2,12 @@
 html
     head
         title TrendLines
+        link(href="http://code.jquery.com/ui/1.10.3/themes/smoothness/jquery-ui.css", rel="stylesheet")
         link(href="/assets/nv.d3.css", rel="stylesheet")
         link(href="/assets/semantic.css", rel="stylesheet")
 
         script(src="/assets/jquery-1.10.2.min.js")
+        script(src="http://code.jquery.com/ui/1.10.3/jquery-ui.js")
         script(src="/assets/semantic.js")
         script(src="/assets/d3.v3.js")
         script(src="/assets/fisheye.js")
@@ -14,20 +16,46 @@ html
         script(src="/assets/moment-with-langs.min.js")
         script(src="/socket.io/socket.io.js")
 
+        link(href="/assets/themes/base/jquery.ui.labeledslider.css", rel="stylesheet")
+        script(src="/assets/ui/jquery.ui.labeledslider.js")
+
         script(src="/assets/app.js")
+
+        style
+            * {
+                font-family:   Verdana, Arial, Helvetica, sans-serif;
+                font-size:     12pt;
+            }
+
+            .ui.grid > .row {
+                margin: 0;
+                padding: 0;
+            }
     body
-        div
-            label(for="client-name-text") Client:
-            input#client-name-text(type="text", name="client", value="whirlpool")
-
-            label(for="product-name-text") Product:
-            input#product-name-text(type="text", name="product", value="WTW4950XW-NAR")
-
-            button(onclick="loadProduct()") Load
-
         .ui.grid
-            #test1.twelve.wide.column
-                svg(style="height:500px")
+            .row
+                .one.wide.column
+                .fifteen.wide.column
+                    label(for="client-name-text") Client:
+                    input#client-name-text(type="text", name="client", value="whirlpool")
 
-            #detail.four.wide.column
+                    label(for="product-name-text") Product:
+                    input#product-name-text(type="text", name="product", value="WTW4950XW-NAR")
+
+                    button(onclick="loadProduct()") Load
+                    button(onclick="startAuto()") Run
+                    button(onclick="stopAuto()") Stop
+            .row(style="margin-top: 10px;")
+                .one.wide.column
+                .fourteen.wide.column
+                    #date_slider
+                .one.wide.column
+            .row
+                .one.wide.column
+                h1#current_date.fifteen.wide.column
+            .row
+                #test1.eleven.wide.column
+                    svg(style="height:500px")
+
+                #detail.five.wide.column
 
