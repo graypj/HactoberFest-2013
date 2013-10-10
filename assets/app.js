@@ -2,6 +2,10 @@ var date = moment('2013-01-01');
 var today = moment();
 var trackingKey = "";
 
+var chartData = {
+    list: [],
+    keyed: {}
+};
 
 function showDetail(secondaryRatings){
   var tooltip = "<h3>"+ trackingKey +"</h3>";
@@ -17,15 +21,26 @@ function getProductData(client, product, callback) {
     }).fail(callback);
 }
 
-function newDataObj(prodData) {
-    return {
-        key: prodData.client.id + " " + prodData.id,
-        values: [{
-            x: prodData.reviews.count,
-            y: prodData.reviews.rating,
-            secondaryRatings: prodData.reviews.secondaryRatings
-        }]
+function addDataObj(prodData) {
+    var key = prodData.client.id + " [" + prodData.id + ']';
+    var value = {
+        x: prodData.reviews.count,
+        y: prodData.reviews.rating,
+        secondaryRatings: prodData.reviews.secondaryRatings
     };
+
+    if (key in chartData.keyed) {
+        chartData.keyed[key].values[0] = value;
+        return;
+    }
+
+    var element = {
+        key: key,
+        values: [value]
+    };
+
+    chartData.list.push(element);
+    chartData.keyed[key] = element;
 }
 
 function loadData(element, client, product) {
@@ -35,11 +50,10 @@ function loadData(element, client, product) {
             return;
         }
 
-        var data = [newDataObj(response)];
+        addDataObj(response);
 
         function loadVis() {
-            element.datum(data)
-                   .call(chart);
+            element.call(chart);
 
             nv.utils.windowResize(chart.update);
 
@@ -59,14 +73,12 @@ function loadData(element, client, product) {
         if (response.related && response.related.products) {
             var count = response.related.products.length;
 
-            console.log(response.related);
-
             response.related.products.forEach(function (relatedProd) {
                 getProductData(relatedProd.client, relatedProd.externalId, function (err, response) {
                     count -= 1;
 
                     if (!err) {
-                        data.push(newDataObj(response));
+                        addDataObj(response);
                     }
 
                     if (count === 0) {
@@ -142,7 +154,7 @@ nv.addGraph(function() {
     trackingKey = e.series.key;
     showDetail(e.point.secondaryRatings);
   });
-  loadData(d3.selectAll('#test1 svg'), 'whirlpool', 'WTW4950XW-NAR');
+  loadData(d3.selectAll('#test1 svg').datum(chartData.list), 'whirlpool', 'WTW4950XW-NAR');
 
   return chart;
 });
