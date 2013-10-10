@@ -1,8 +1,18 @@
-var date = moment('2013-01-01');
+var date = moment('2012-01-01');
 var today = moment();
 var trackingKey;
+var runningAuto = false;
+
+var interval = {
+    type: 'weeks',
+    count: 2
+};
 
 var chartData = {
+    client: null,
+    product: null,
+    element: null,
+    syndicationElement: null,
     list: [],
     syndication: [
         {key: 'Syndicated', values: []},
@@ -99,8 +109,10 @@ function addDataObj(prodData) {
     chartData.keyed[key] = element;
 }
 
-function loadData(element, syndicationElement, client, product) {
-    getProductData(client, product, function (err, response) {
+function loadProductData() {
+    $('#current_date').text(date.format('YYYY-MM-DD'));
+
+    getProductData(chartData.client, chartData.product, function (err, response) {
         if (err) {
             console.log(err);
             return;
@@ -108,21 +120,16 @@ function loadData(element, syndicationElement, client, product) {
         addDataObj(response);
 
         function loadVis() {
-            element.call(chart);
-            syndicationElement.call(syndicationInfoChart);
+            chartData.element.call(chart);
+            chartData.syndicationElement.call(syndicationInfoChart);
             nv.utils.windowResize(chart.update);
             nv.utils.windowResize(syndicationInfoChart.update);
 
-            if (!date.isSame(today, 'day')) {
-                date.add('weeks', 2);
-
-                if (date.isAfter(today)) {
-                    date = today;
-                }
-
+            if (runningAuto) {
                 setTimeout(function () {
-                    loadData(element, syndicationElement, client, product);
-                }, 500);
+
+                    $('#date_slider').labeledslider('value', $('#date_slider').labeledslider('value') + 1);
+                }, 100);
             }
         }
 
@@ -148,12 +155,30 @@ function loadData(element, syndicationElement, client, product) {
     });
 }
 
+function startAuto() {
+    if (runningAuto) {
+        return;
+    }
+
+    runningAuto = true;
+    $('#date_slider').labeledslider('value', $('#date_slider').labeledslider('value') + 1);
+}
+
+function stopAuto() {
+    runningAuto = false;
+}
+
 function loadProduct() {
     var clientName = $('#client-name-text').val();
     var productName = $('#product-name-text').val();
 
     trackingKey = clientName + ' [' + productName + ']';
-    loadData(d3.selectAll('#test1 svg').datum(chartData.list), d3.selectAll('#test2 svg').datum(chartData.syndication), clientName, productName);
+
+    chartData.element = d3.selectAll('#test1 svg').datum(chartData.list);
+    chartData.syndicationElement = d3.selectAll('#test2 svg').datum(chartData.syndication);
+    chartData.client = clientName;
+    chartData.product = productName;
+    loadProductData();
 }
 
 var chart;
@@ -195,3 +220,47 @@ nv.addGraph(function () {
     return syndicationInfoChart;
 });
 
+$(function() {
+    var labels = [];
+    var dates = [];
+    var labelDate = moment(date);
+    var count = 0;
+
+    while (labelDate.isBefore(today)) {
+        count += 1;
+        labels.push(labelDate.format('YYYY-MM-DD'));
+        dates.push(moment(labelDate));
+        labelDate.add(interval.type, interval.count);
+    }
+
+    if (!labelDate.isSame(today)) {
+        count += 1;
+        dates.push(moment(today));
+        labels.push(today.format('YYYY-MM-DD'));
+    }
+
+    $('#date_slider').labeledslider({
+        min: 1,
+        max: count,
+        range: 'min',
+        step: 1,
+        tickInterval: 5,
+        tickLabels: labels,
+        slide: function (event, ui) {
+            if (!dates[ui.value - 1].isSame(date)) {
+                date = moment(dates[ui.value - 1]);
+                loadProductData();
+            } else {
+                runningAuto = false;
+            }
+        },
+        change: function (event, ui) {
+            if (!dates[ui.value - 1].isSame(date)) {
+                date = moment(dates[ui.value - 1]);
+                loadProductData();
+            } else {
+                runningAuto = false;
+            }
+        }
+    }).slider();
+});
