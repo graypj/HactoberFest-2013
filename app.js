@@ -279,7 +279,7 @@ app.get('/api/clients/:client/:product', function (req, res) {
                     return;
                 }
 
-                var prodInfo = data.Includes.Products[req.params.product];
+                var prodInfo = data.Includes.Products ? data.Includes.Products[req.params.product] : null;
                 var reviewStats = { AverageOverallRating: 0, TotalReviewCount: 0, SecondaryRatingsAveragesOrder: [] };
 
                 if (prodInfo) {
