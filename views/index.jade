@@ -15,6 +15,8 @@ html
         script(src="/assets/moment-with-langs.min.js")
         script(src="/socket.io/socket.io.js")
 
+        script(src="http://www.myersdaily.org/joseph/javascript/md5.js")
+
         link(href="/assets/themes/base/jquery.ui.labeledslider.css", rel="stylesheet")
         script(src="/assets/ui/jquery.ui.labeledslider.js")
 
@@ -35,11 +37,19 @@ html
             .row
                 .one.wide.column
                 .fifteen.wide.column
-                    label(for="client-name-text") Client:
-                    input#client-name-text(type="text", name="client", value="whirlpool")
+                    label(for="client1-name-text") Client:
+                    input#client1-name-text(type="text", name="client1", value="whirlpool")
 
-                    label(for="product-name-text") Product:
-                    input#product-name-text(type="text", name="product", value="WTW4950XW-NAR")
+                    label(for="product1-name-text") Product:
+                    input#product1-name-text(type="text", name="product1", value="WTW4950XW-NAR")
+            .row
+                .one.wide.column
+                .fifteen.wide.column
+                    label(for="client2-name-text") Client:
+                    input#client2-name-text(type="text", name="client2", value="whirlpool")
+
+                    label(for="product2-name-text") Product:
+                    input#product2-name-text(type="text", name="product2", value="GB2FHDXWS-NAR")
 
                     button(onclick="loadProduct()") Load
                     button(onclick="startAuto()") Run
@@ -58,5 +68,11 @@ html
 
                 #detail.five.wide.column
 
-            #test2.twelve.wide.column
-                svg(style="height:500px")
+            .row
+                #brand1-title.eight.wide.column(style="padding-left:50px")
+                #brand2-title.eight.wide.column
+
+            .row
+                #test2.eight.wide.column
+                    svg(style="height:500px")
+                .eight.wide.column

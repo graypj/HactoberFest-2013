@@ -73,6 +73,7 @@ function cacheResult(key, callback, loader) {
                     return;
                 }
 
+                console.log("Storing cache file: " + cacheFile);
                 fs.writeFile(cacheFile, _.isString(data) ? data : JSON.stringify(data), { encoding: 'utf-8' }, function (err) {
                     if (err) {
                         console.log(err);
@@ -86,8 +87,10 @@ function cacheResult(key, callback, loader) {
 
     fs.exists(cacheFile, function (exists) {
         if (exists) {
+            console.log("Loading cache file: " + cacheFile);
             fs.readFile(cacheFile, { encoding: 'utf-8' }, function (err, data) {
                 if (err) {
+                    console.log(err);
                     loadDataCb();
                     return;
                 }
@@ -95,10 +98,12 @@ function cacheResult(key, callback, loader) {
                 try {
                     successCb(data);
                 } catch (e) {
+                    console.log(e);
                     loadDataCb();
                 }
             });
         } else {
+            console.log("Cache file not found: " + cacheFile);
             loadDataCb();
         }
     });
@@ -271,7 +276,11 @@ app.get('/api/clients/:client/:product', function (req, res) {
                 }
 
                 var prodInfo = data.Includes.Products[req.params.product];
-                var reviewStats = prodInfo.FilteredReviewStatistics;
+                var reviewStats = { AverageOverallRating: 0, TotalReviewCount: 0, SecondaryRatingsAveragesOrder: [] };
+
+                if (prodInfo) {
+                    reviewStats = prodInfo.FilteredReviewStatistics;
+                }
 
                 var result = {
                     date: date.format('YYYY-MM-DD'),

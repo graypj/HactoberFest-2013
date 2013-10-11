@@ -9,8 +9,11 @@ var interval = {
 };
 
 var chartData = {
-    client: null,
-    product: null,
+    client1: null,
+    product1: null,
+    client2: null,
+    product2: null,
+
     element: null,
     syndicationElement: null,
     list: [],
@@ -20,6 +23,36 @@ var chartData = {
     ],
     keyed: {}
 };
+
+var groupings = {
+    client1: {
+        shape: 'circle',
+        color: 'red'
+    },
+
+    client2: {
+        shape: 'triangle-up',
+        color: 'green'
+    }
+};
+
+var nextColorIndex = 0;
+
+function nextColor() {
+    return nv.utils.defaultColor()({}, nextColorIndex++);
+}
+
+function getColorFor(group) {
+    if (!groupings[group]) {
+        groupings[group] = {};
+    }
+
+    if (!groupings[group].color) {
+        groupings[group].color = nextColor();
+    }
+
+    return groupings[group].color;
+}
 
 function showDetail(data) {
     var content = '<h1 class="ui dividing header">' + data.client.id + ' <span style="font-size: 0.7em; font-style:italic; font-weight:normal">' + data.id + '</span></h1>';
@@ -65,21 +98,23 @@ function getProductData(client, product, callback) {
     }).fail(callback);
 }
 
-function addDataObj(prodData) {
+function addDataObj(grouping, prodData) {
     var key = prodData.client.id + " [" + prodData.id + ']';
     var value = {
         x: prodData.reviews.count,
         y: prodData.reviews.rating,
-        data: prodData
+        data: prodData,
+        shape: groupings[grouping].shape,
+        color: getColorFor(prodData.client.id)
     };
 
     var syndicationElement = {
-        x: prodData.client.id + " [" + prodData.id + ']',
+        x: prodData.client.id,
         y: prodData.reviews.syndicatedCount,
         color: '#aec7e8'
     };
     var nativeElement = {
-        x: prodData.client.id + " [" + prodData.id + ']',
+        x: prodData.client.id,
         y: prodData.reviews.count - prodData.reviews.syndicatedCount,
         color: '#798ba2'
     };
@@ -87,12 +122,12 @@ function addDataObj(prodData) {
     if (key in chartData.keyed) {
         chartData.keyed[key].values[0] = value;
         chartData.syndication[0].values.forEach(function (d, i) {
-            if (d.x == key) {
+            if (d.x == prodData.client.id) {
                 chartData.syndication[0].values[i] = syndicationElement;
             }
         });
         chartData.syndication[1].values.forEach(function (d, i) {
-            if (d.x == key) {
+            if (d.x == prodData.client.id) {
                 chartData.syndication[1].values[i] = nativeElement;
             }
         });
@@ -122,47 +157,60 @@ function addDataObj(prodData) {
 function loadProductData() {
     $('#current_date').text(date.format('YYYY-MM-DD'));
 
-    getProductData(chartData.client, chartData.product, function (err, response) {
-        if (err) {
-            console.log(err);
-            return;
-        }
-        addDataObj(response);
+    function updateCharts(grouping, client, product, callback) {
+        getProductData(client, product, function (err, response) {
+            if (err) {
+                console.log(err);
+                return;
+            }
+            addDataObj(grouping, response);
 
-        function loadVis() {
-            chartData.element.call(chart);
-            chartData.syndicationElement.call(syndicationInfoChart);
-            nv.utils.windowResize(chart.update);
-            nv.utils.windowResize(syndicationInfoChart.update);
+            function loadVis() {
+                chartData.element.call(chart);
+                chartData.syndicationElement.call(syndicationInfoChart);
+                nv.utils.windowResize(chart.update);
+                nv.utils.windowResize(syndicationInfoChart.update);
 
+                if (callback) callback();
+            }
+
+            if (response.related && response.related.products && response.related.products.length > 0) {
+                var count = response.related.products.length;
+
+                response.related.products.forEach(function (relatedProd) {
+                    getProductData(relatedProd.client, relatedProd.externalId, function (err, response) {
+                        count -= 1;
+
+                        if (!err) {
+                            addDataObj(grouping, response);
+                        }
+
+                        if (count === 0) {
+                            loadVis();
+                        }
+                    });
+                });
+            } else {
+                loadVis();
+            }
+        });
+    }
+
+    var chartsUpdatedCount = 0;
+    function chartsUpdated() {
+        chartsUpdatedCount += 1;
+
+        if (chartsUpdatedCount == 2) {
             if (runningAuto) {
                 setTimeout(function () {
-
                     $('#date_slider').labeledslider('value', $('#date_slider').labeledslider('value') + 1);
                 }, 100);
             }
         }
+    }
 
-        if (response.related && response.related.products && response.related.products.length > 0) {
-            var count = response.related.products.length;
-
-            response.related.products.forEach(function (relatedProd) {
-                getProductData(relatedProd.client, relatedProd.externalId, function (err, response) {
-                    count -= 1;
-
-                    if (!err) {
-                        addDataObj(response);
-                    }
-
-                    if (count === 0) {
-                        loadVis();
-                    }
-                });
-            });
-        } else {
-            loadVis();
-        }
-    });
+    updateCharts('client1', chartData.client1, chartData.product1, chartsUpdated);
+    updateCharts('client2', chartData.client2, chartData.product2, chartsUpdated);
 }
 
 function startAuto() {
@@ -179,15 +227,18 @@ function stopAuto() {
 }
 
 function loadProduct() {
-    var clientName = $('#client-name-text').val();
-    var productName = $('#product-name-text').val();
+    chartData.client1 = $('#client1-name-text').val();
+    chartData.product1 = $('#product1-name-text').val();
 
-    trackingKey = clientName + ' [' + productName + ']';
+    trackingKey = chartData.client1 + ' [' + chartData.product1 + ']';
+    $('#brand1-title').text(trackingKey);
+
+    chartData.client2 = $('#client2-name-text').val();
+    chartData.product2 = $('#product2-name-text').val();
+    $('#brand2-title').text(chartData.client2 + ' [' + chartData.product2 + ']');
 
     chartData.element = d3.selectAll('#test1 svg').datum(chartData.list);
     chartData.syndicationElement = d3.selectAll('#test2 svg').datum(chartData.syndication);
-    chartData.client = clientName;
-    chartData.product = productName;
     loadProductData();
 }
 
@@ -199,10 +250,11 @@ nv.addGraph(function () {
         .sizeRange([2000, 3000])
         .showDistX(true)
         .showDistY(true)
-        .useVoronoi(true)
-        .color(d3.scale.category10().range())
-        .transitionDuration(300)
+        //.color(['red', 'orange', 'yellow'])
+        //.color(d3.scale.category10().range())
     ;
+
+    chart.scatter.onlyCircles(false);
 
     //chart.xAxis.tickFormat(d3.format('.02f'));
     chart.yAxis.tickFormat(d3.format('.02f'));
