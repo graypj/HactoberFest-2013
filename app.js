@@ -48,6 +48,10 @@ var clients = {
 
     directbuy: {
         passkey: 'b9nlbqyykw8ykatyy4pzp5zgv'
+    },
+
+    maytag: {
+        passkey: '2ce2dpzbzpexo9wyo29zc6eia'
     }
 };
 
