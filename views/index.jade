@@ -36,24 +36,20 @@ html
         .ui.grid
             .row
                 .one.wide.column
-                .fifteen.wide.column
+                .seven.wide.column
                     label(for="client1-name-text") Client:
                     input#client1-name-text(type="text", name="client1", value="whirlpool")
 
                     label(for="product1-name-text") Product:
                     input#product1-name-text(type="text", name="product1", value="WTW4950XW-NAR")
-            .row
-                .one.wide.column
-                .fifteen.wide.column
-                    label(for="client2-name-text") Client:
-                    input#client2-name-text(type="text", name="client2", value="maytag")
 
-                    label(for="product2-name-text") Product:
-                    input#product2-name-text(type="text", name="product2", value="MHWE201YW-NAR")
-
+                    button(onclick="addProduct()") Add
                     button(onclick="loadProduct()") Load
                     button(onclick="startAuto()") Run
                     button(onclick="stopAuto()") Stop
+                .eight.wide.column
+                    #current-products
+
             .row(style="margin-top: 10px;")
                 .one.wide.column
                 .fourteen.wide.column
@@ -67,10 +63,6 @@ html
                     svg(style="height:500px")
 
                 #detail.five.wide.column
-
-            .row
-                #brand1-title.eight.wide.column(style="padding-left:50px")
-                #brand2-title.eight.wide.column
 
             #syndication.row
 

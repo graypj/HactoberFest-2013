@@ -1,6 +1,6 @@
 var date = moment('2012-01-01');
 var today = moment();
-var trackingKey;
+var trackingKey = null;
 var runningAuto = false;
 var chartsUpdatedCount = 0;
 var productsCount = 0;
@@ -60,6 +60,21 @@ var groupings = {
 
     client1: {
         shape: 'triangle-up',
+        color: 'green'
+    },
+
+    client2: {
+        shape: 'cross',
+        color: 'green'
+    },
+
+    client3: {
+        shape: 'square',
+        color: 'green'
+    },
+
+    client4: {
+        shape: 'diamond',
         color: 'green'
     }
 };
@@ -238,30 +253,25 @@ function stopAuto() {
     runningAuto = false;
 }
 
+function addProduct() {
+    var newProduct = new product();
+    newProduct.chartid = productsCount;
+    newProduct.client = $('#client1-name-text').val();
+    newProduct.product = $('#product1-name-text').val();
+    newProduct.key = newProduct.client + ' [' + newProduct.product + ']';
+    products[newProduct.key] = newProduct;
+    productsCount++;
+
+    if (trackingKey == null) {
+        trackingKey = newProduct.key;
+    }
+    $('#current-products').append('<p>Client: ' + newProduct.client + ' &nbsp;Product:' + newProduct.product + ' </p>');
+}
 function loadProduct() {
-    var product1 = new product();
-    product1.chartid = 0;
-    product1.client = $('#client1-name-text').val();
-    product1.product = $('#product1-name-text').val();
-    product1.key = product1.client + ' [' + product1.product + ']';
-    $('#brand1-title').text(trackingKey);
-    products[product1.key] = product1;
-    productsCount++;
-
-    var product2 = new product();
-    product2.chartid = 1;
-    product2.client = $('#client2-name-text').val();
-    product2.product = $('#product2-name-text').val();
-    product2.key = product2.client + ' [' + product2.product + ']';
-    $('#brand2-title').text(trackingKey);
-    products[product2.key] = product2;
-    productsCount++;
-
-    trackingKey = product1.key;
     scatterChartElement = d3.select('#test1 svg').datum(scatterDataList);
     for (var pKey in products) {
         var p = products[pKey];
-        document.getElementById("syndication").innerHTML += '<div id = "svg_' + p.chartid + '" style="width:50%;display:inline-block" class = "colume"></div>\n';
+        $('#syndication').append('<div id = "svg_' + p.chartid + '" style="width:50%;display:inline-block" class = "colume"><p style="padding-left:50px">' + pKey + '</p></div>\n');
         d3.select("#svg_" + p.chartid).append("svg:svg").attr("height", "500px");
         nv.addGraph(function () {
             var syndicationChart = nv.models.multiBarChart()
