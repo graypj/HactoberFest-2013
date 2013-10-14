@@ -2,57 +2,17 @@ var date = moment('2012-01-01');
 var today = moment();
 var trackingKey;
 var runningAuto = false;
+var chartsUpdatedCount = 0;
+var productsCount = 0;
 
 var interval = {
     type: 'weeks',
     count: 2
 };
-
-var chartData = {
-    client1: null,
-    product1: null,
-    client2: null,
-    product2: null,
-
-    element: null,
-    syndicationElement: null,
-    list: [],
-    syndication: [
-        {key: 'Syndicated', values: []},
-        {key: 'Native', values: []}
-    ],
-    keyed: {}
-};
-
-var groupings = {
-    client1: {
-        shape: 'circle',
-        color: 'red'
-    },
-
-    client2: {
-        shape: 'triangle-up',
-        color: 'green'
-    }
-};
-
-var nextColorIndex = 0;
-
-function nextColor() {
-    return nv.utils.defaultColor()({}, nextColorIndex++);
-}
-
-function getColorFor(group) {
-    if (!groupings[group]) {
-        groupings[group] = {};
-    }
-
-    if (!groupings[group].color) {
-        groupings[group].color = nextColor();
-    }
-
-    return groupings[group].color;
-}
+var scatterChartElement;
+var scatterDataList = [];
+var scatterChart;
+var syndicationCharts = [];
 
 function showDetail(data) {
     var content = '<h1 class="ui dividing header">' + data.client.id + ' <span style="font-size: 0.7em; font-style:italic; font-weight:normal">' + data.id + '</span></h1>';
@@ -92,13 +52,56 @@ function showDetail(data) {
     document.getElementById('detail').innerHTML = content;
 }
 
+var groupings = {
+    client0: {
+        shape: 'circle',
+        color: 'red'
+    },
+
+    client1: {
+        shape: 'triangle-up',
+        color: 'green'
+    }
+};
+
+var nextColorIndex = 0;
+
+function nextColor() {
+    return nv.utils.defaultColor()({}, nextColorIndex++);
+}
+
+function getColorFor(group) {
+    if (!groupings[group]) {
+        groupings[group] = {};
+    }
+
+    if (!groupings[group].color) {
+        groupings[group].color = nextColor();
+    }
+
+    return groupings[group].color;
+}
+
+var products = {};
+
+var product = function () {
+    this.client = null;
+    this.product = null;
+    this.syndicationElement = null;
+    this.syndication = [
+        {key: 'Syndicated', values: []},
+        {key: 'Native', values: []}
+    ];
+    this.keyed = {};
+};
+
 function getProductData(client, product, callback) {
     $.get('/api/clients/' + client + '/' + product + '?date=' + date.format('YYYY-MM-DD'),function (response) {
         callback(null, response);
     }).fail(callback);
 }
 
-function addDataObj(grouping, prodData) {
+function addDataObj(grouping, prodData, product) {
     var key = prodData.client.id + " [" + prodData.id + ']';
     var value = {
         x: prodData.reviews.count,
@@ -119,16 +122,16 @@ function addDataObj(grouping, prodData) {
         color: '#798ba2'
     };
 
-    if (key in chartData.keyed) {
-        chartData.keyed[key].values[0] = value;
-        chartData.syndication[0].values.forEach(function (d, i) {
+    if (key in product.keyed) {
+        product.keyed[key].values[0] = value;
+        product.syndication[0].values.forEach(function (d, i) {
             if (d.x == prodData.client.id) {
-                chartData.syndication[0].values[i] = syndicationElement;
+                product.syndication[0].values[i] = syndicationElement;
             }
         });
-        chartData.syndication[1].values.forEach(function (d, i) {
+        product.syndication[1].values.forEach(function (d, i) {
             if (d.x == prodData.client.id) {
-                chartData.syndication[1].values[i] = nativeElement;
+                product.syndication[1].values[i] = nativeElement;
             }
         });
 
@@ -148,30 +151,31 @@ function addDataObj(grouping, prodData) {
         showDetail(value.data);
     }
 
-    chartData.syndication[0].values.push(syndicationElement);
-    chartData.syndication[1].values.push(nativeElement);
-    chartData.list.push(element);
-    chartData.keyed[key] = element;
+    product.syndication[0].values.push(syndicationElement);
+    product.syndication[1].values.push(nativeElement);
+    scatterDataList.push(element);
+    product.keyed[key] = element;
 }
 
-function loadProductData() {
+function loadProductData(curProduct) {
     $('#current_date').text(date.format('YYYY-MM-DD'));
-
     function updateCharts(grouping, client, product, callback) {
         getProductData(client, product, function (err, response) {
             if (err) {
                 console.log(err);
                 return;
             }
-            addDataObj(grouping, response);
+            addDataObj(grouping, response, curProduct);
 
             function loadVis() {
-                chartData.element.call(chart);
-                chartData.syndicationElement.call(syndicationInfoChart);
-                nv.utils.windowResize(chart.update);
-                nv.utils.windowResize(syndicationInfoChart.update);
+                scatterChartElement.call(scatterChart);
+                nv.utils.windowResize(scatterChart.update);
+                curProduct.syndicationElement.call(syndicationCharts[curProduct.chartid]);
+                nv.utils.windowResize(syndicationCharts[curProduct.chartid].update);
 
-                if (callback) callback();
+                if (callback) {
+                    callback();
+                }
             }
 
             if (response.related && response.related.products && response.related.products.length > 0) {
@@ -182,7 +186,7 @@ function loadProductData() {
                         count -= 1;
 
                         if (!err) {
-                            addDataObj(grouping, response);
+                            addDataObj(grouping, response, curProduct);
                         }
 
                         if (count === 0) {
@@ -196,11 +200,12 @@ function loadProductData() {
         });
     }
 
-    var chartsUpdatedCount = 0;
+
     function chartsUpdated() {
         chartsUpdatedCount += 1;
 
-        if (chartsUpdatedCount == 2) {
+        if (chartsUpdatedCount == productsCount) {
+            chartsUpdatedCount = 0;
             if (runningAuto) {
                 setTimeout(function () {
                     $('#date_slider').labeledslider('value', $('#date_slider').labeledslider('value') + 1);
@@ -209,8 +214,15 @@ function loadProductData() {
         }
     }
 
-    updateCharts('client1', chartData.client1, chartData.product1, chartsUpdated);
-    updateCharts('client2', chartData.client2, chartData.product2, chartsUpdated);
+    updateCharts('client' + curProduct.chartid, curProduct.client, curProduct.product, chartsUpdated);
+}
+
+
+function loadAllProducts() {
+    for (var p in products) {
+        loadProductData(products[p]);
+    }
+
 }
 
 function startAuto() {
@@ -227,24 +239,58 @@ function stopAuto() {
 }
 
 function loadProduct() {
-    chartData.client1 = $('#client1-name-text').val();
-    chartData.product1 = $('#product1-name-text').val();
-
-    trackingKey = chartData.client1 + ' [' + chartData.product1 + ']';
+    var product1 = new product();
+    product1.chartid = 0;
+    product1.client = $('#client1-name-text').val();
+    product1.product = $('#product1-name-text').val();
+    product1.key = product1.client + ' [' + product1.product + ']';
     $('#brand1-title').text(trackingKey);
+    products[product1.key] = product1;
+    productsCount++;
 
-    chartData.client2 = $('#client2-name-text').val();
-    chartData.product2 = $('#product2-name-text').val();
-    $('#brand2-title').text(chartData.client2 + ' [' + chartData.product2 + ']');
+    var product2 = new product();
+    product2.chartid = 1;
+    product2.client = $('#client2-name-text').val();
+    product2.product = $('#product2-name-text').val();
+    product2.key = product2.client + ' [' + product2.product + ']';
+    $('#brand2-title').text(trackingKey);
+    products[product2.key] = product2;
+    productsCount++;
 
-    chartData.element = d3.selectAll('#test1 svg').datum(chartData.list);
-    chartData.syndicationElement = d3.selectAll('#test2 svg').datum(chartData.syndication);
-    loadProductData();
+    trackingKey = product1.key;
+    scatterChartElement = d3.select('#test1 svg').datum(scatterDataList);
+    for (var pKey in products) {
+        var p = products[pKey];
+        document.getElementById("syndication").innerHTML += '<div id = "svg_' + p.chartid + '" style="width:50%;display:inline-block" class = "colume"></div>\n';
+        d3.select("#svg_" + p.chartid).append("svg:svg").attr("height", "500px");
+        nv.addGraph(function () {
+            var syndicationChart = nv.models.multiBarChart()
+                    .barColor(d3.scale.category20().range())
+                    .forceY([0, 1000])
+                    .margin({bottom: 100})
+                    .transitionDuration(300)
+                    .delay(0)
+                ;
+
+            syndicationChart.multibar
+                .hideable(true);
+
+            syndicationChart.yAxis
+                .tickFormat(d3.format('d'));
+            syndicationCharts.push(syndicationChart);
+            return syndicationChart;
+        });
+    }
+    for (var pKey in products) {
+        var p = products[pKey];
+        p.syndicationElement = d3.select('#svg_' + p.chartid + ' svg').datum(p.syndication);
+
+    }
+    loadAllProducts();
 }
 
-var chart;
 nv.addGraph(function () {
-    chart = nv.models.scatterChart()
+    scatterChart = nv.models.scatterChart()
         .forceY([0, 5])
         .forceX([0, 1000])
         .sizeRange([2000, 3000])
@@ -254,36 +300,19 @@ nv.addGraph(function () {
         //.color(d3.scale.category10().range())
     ;
 
-    chart.scatter.onlyCircles(false);
+    scatterChart.scatter.onlyCircles(false);
 
-    //chart.xAxis.tickFormat(d3.format('.02f'));
-    chart.yAxis.tickFormat(d3.format('.02f'));
-    chart.scatter.dispatch.on('elementClick', function (e) {
+    scatterChart.yAxis.tickFormat(d3.format('.02f'));
+    scatterChart.scatter.dispatch.on('elementClick', function (e) {
         trackingKey = e.series.key;
         showDetail(e.point.data);
     });
 
-    return chart;
-});
-var syndicationInfoChart;
-nv.addGraph(function () {
-    syndicationInfoChart = nv.models.multiBarChart()
-        .barColor(d3.scale.category20().range())
-        .forceY([0, 1000])
-        .margin({bottom: 100})
-        .transitionDuration(300)
-        .delay(0)
-    ;
-
-    syndicationInfoChart.multibar
-        .hideable(true);
-
-    syndicationInfoChart.yAxis
-        .tickFormat(d3.format('d'));
-    return syndicationInfoChart;
+    return scatterChart;
 });
 
-$(function() {
+
+$(function () {
     var labels = [];
     var dates = [];
     var labelDate = moment(date);
@@ -312,7 +341,7 @@ $(function() {
         slide: function (event, ui) {
             if (!dates[ui.value - 1].isSame(date)) {
                 date = moment(dates[ui.value - 1]);
-                loadProductData();
+                loadAllProducts();
             } else {
                 runningAuto = false;
             }
@@ -320,7 +349,7 @@ $(function() {
         change: function (event, ui) {
             if (!dates[ui.value - 1].isSame(date)) {
                 date = moment(dates[ui.value - 1]);
-                loadProductData();
+                loadAllProducts();
             } else {
                 runningAuto = false;
             }
