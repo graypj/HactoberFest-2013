@@ -13,6 +13,7 @@ var scatterChartElement;
 var scatterDataList = [];
 var scatterChart;
 var syndicationCharts = [];
+var rivallist = [{client:"maytag", product:"MHWE201YW-NAR"}, {client:"LG", product:"MD00002347"}];
 
 function showDetail(data) {
     var content = '<h1 class="ui dividing header">' + data.client.id + ' <span style="font-size: 0.7em; font-style:italic; font-weight:normal">' + data.id + '</span></h1>';
@@ -44,12 +45,16 @@ function showDetail(data) {
     data.reviews.secondaryRatings.forEach(function (info) {
         content += '<tr>';
         content += '<td>' + info.id + '</td>';
-        content += '<td>' + info.rating + '</td>';
+        content += '<td><div id="rating_' + info.id + '" style = "display: inline-block"></div> ' + info.rating.toFixed(1) + '</td>';
         content += '</tr>';
     });
     content += '</tbody></table>';
 
     document.getElementById('detail').innerHTML = content;
+
+    data.reviews.secondaryRatings.forEach(function (info) {
+        $('#rating_' + info.id).raty({score: info.rating, readOnly: true, width: 150, path: 'assets/img' });
+    });
 }
 
 var groupings = {
@@ -256,16 +261,22 @@ function stopAuto() {
 function addProduct() {
     var newProduct = new product();
     newProduct.chartid = productsCount;
-    newProduct.client = $('#client1-name-text').val();
-    newProduct.product = $('#product1-name-text').val();
+    newProduct.client = $('#client-name-text').val();
+    newProduct.product = $('#product-name-text').val();
     newProduct.key = newProduct.client + ' [' + newProduct.product + ']';
     products[newProduct.key] = newProduct;
     productsCount++;
 
+    if (rivallist.length > 0){
+        var nextProduct = rivallist.pop();
+        $('#client-name-text').val(nextProduct.client);
+        $('#product-name-text').val(nextProduct.product);
+    }
+
     if (trackingKey == null) {
         trackingKey = newProduct.key;
     }
-    $('#current-products').append('<p>Client: ' + newProduct.client + ' &nbsp;Product:' + newProduct.product + ' </p>');
+    $('#current-products').append('<dd>' + newProduct.client + ' : ' + newProduct.product + ' </dd>');
 }
 function loadProduct() {
     scatterChartElement = d3.select('#test1 svg').datum(scatterDataList);

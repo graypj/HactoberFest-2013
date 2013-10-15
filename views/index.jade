@@ -13,6 +13,7 @@ html
         script(src="/assets/nv.d3.js")
         script(src="/assets/tooltip.js")
         script(src="/assets/moment-with-langs.min.js")
+        script(src="/assets/jquery.raty.min.js")
         script(src="/socket.io/socket.io.js")
 
         script(src="http://www.myersdaily.org/joseph/javascript/md5.js")
@@ -37,18 +38,19 @@ html
             .row
                 .one.wide.column
                 .seven.wide.column
-                    label(for="client1-name-text") Client:
-                    input#client1-name-text(type="text", name="client1", value="whirlpool")
+                    label(for="client-name-text") Client:
+                    input#client-name-text(type="text", name="client", value="whirlpool")
 
-                    label(for="product1-name-text") Product:
-                    input#product1-name-text(type="text", name="product1", value="WTW4950XW-NAR")
+                    label(for="product-name-text") Product:
+                    input#product-name-text(type="text", name="product", value="WTW4950XW-NAR")
 
                     button(onclick="addProduct()") Add
                     button(onclick="loadProduct()") Load
                     button(onclick="startAuto()") Run
                     button(onclick="stopAuto()") Stop
                 .eight.wide.column
-                    #current-products
+                    dl#current-products(style="margin-top:0")
+                        dt Product list:
 
             .row(style="margin-top: 10px;")
                 .one.wide.column

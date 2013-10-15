@@ -52,6 +52,10 @@ var clients = {
 
     maytag: {
         passkey: '2ce2dpzbzpexo9wyo29zc6eia'
+    },
+
+    LG: {
+        passkey: '9tk3h2yh2dfi0ffc6m43kmv03'
     }
 };
 
