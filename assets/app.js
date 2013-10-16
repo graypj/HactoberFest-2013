@@ -13,7 +13,7 @@ var scatterChartElement;
 var scatterDataList = [];
 var scatterChart;
 var syndicationCharts = [];
-var rivallist = [{client:"maytag", product:"MHWE201YW-NAR"}, {client:"LG", product:"MD00002347"}];
+var rivallist = [{client:"maytag", product:"MHWE201YW-NAR"}, {client:"LG", product:"MD00002347"}, {client:"geappliances", product:"GTWN4250DWS"}];
 
 function showDetail(data) {
     var content = '<h1 class="ui dividing header">' + data.client.id + ' <span style="font-size: 0.7em; font-style:italic; font-weight:normal">' + data.id + '</span></h1>';

@@ -56,6 +56,10 @@ var clients = {
 
     LG: {
         passkey: '9tk3h2yh2dfi0ffc6m43kmv03'
+    },
+
+    geappliances: {
+        passkey: 'puj4ut2luo7quh90y76itk63x'
     }
 };
 
